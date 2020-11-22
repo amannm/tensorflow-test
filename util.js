@@ -42,16 +42,16 @@ export function drawSegment([ay, ax], [by, bx], color, scale, ctx) {
  */
 export function drawSkeleton(keypoints, minConfidence, ctx, scale = 1, color = COLOR) {
   const adjacentKeyPoints =
-      posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+    posenet.getAdjacentKeyPoints(keypoints, minConfidence);
 
-  function toTuple({y, x}) {
+  function toTuple({ y, x }) {
     return [y, x];
   }
 
   adjacentKeyPoints.forEach((keypoints) => {
     drawSegment(
-        toTuple(keypoints[0].position), toTuple(keypoints[1].position), color,
-        scale, ctx);
+      toTuple(keypoints[0].position), toTuple(keypoints[1].position), color,
+      scale, ctx);
   });
 }
 
@@ -66,7 +66,7 @@ export function drawKeypoints(keypoints, minConfidence, ctx, scale = 1, color = 
       continue;
     }
 
-    const {y, x} = keypoint.position;
+    const { y, x } = keypoint.position;
     drawPoint(ctx, y * scale, x * scale, 3, color);
   }
 }
@@ -80,9 +80,19 @@ export function drawBoundingBox(keypoints, ctx) {
   const boundingBox = posenet.getBoundingBox(keypoints);
 
   ctx.rect(
-      boundingBox.minX, boundingBox.minY, boundingBox.maxX - boundingBox.minX,
-      boundingBox.maxY - boundingBox.minY);
+    boundingBox.minX, boundingBox.minY, boundingBox.maxX - boundingBox.minX,
+    boundingBox.maxY - boundingBox.minY);
 
   ctx.strokeStyle = boundingBoxColor;
   ctx.stroke();
+}
+
+export function getInputSize(input) {
+  if (input.offsetHeight !== 0 && input.offsetWidth !== 0) {
+    return [input.offsetHeight, input.offsetWidth];
+  } else if (input.height != null && input.width != null) {
+    return [input.height, input.width];
+  } else {
+    throw  `HTMLImageElement must have height and width attributes set.`;
+  }
 }

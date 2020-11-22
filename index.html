@@ -13,30 +13,45 @@
       <form>
         <label for="internalResolution">Internal Resolution Scale</label>
         <input type="number" id="internalResolution" name="internalResolution" min="0.25" max="1" step="0.25"
-          value="0.5" oninput="this.form.internalResolutionRange.value=this.value" />
-        <input type="range" name="internalResolutionRange" min="0.25" max="1" step="0.25" value="0.5"
-          oninput="this.form.internalResolution.value=this.value" />
+          value="1" oninput="this.form.internalResolutionRange.value=this.value" />
+        <input type="range" id="internalResolutionRange" name="internalResolutionRange" min="0.25" max="1" step="0.25"
+          value="1" oninput="this.form.internalResolution.value=this.value" />
+      </form>
+      <form>
+        <label for="internalPoseResolution">Internal Pose Resolution Scale</label>
+        <input type="number" id="internalPoseResolution" name="internalPoseResolution" min="0" max="4" step="0.01"
+          value="0" oninput="this.form.internalPoseResolutionRange.value=this.value" disabled="true" />
+        <input type="range" id="internalPoseResolutionRange" name="internalPoseResolutionRange" min="0" max="4"
+          step="0.01" value="0" oninput="this.form.internalPoseResolution.value=this.value" disabled="true" />
       </form>
       <form>
         <label for="segmentationThreshold">Segmentation Threshold</label>
         <input type="number" id="segmentationThreshold" name="segmentationThreshold" min="0.0" max="1" step="0.01"
           value="0.7" oninput="this.form.segmentationThresholdRange.value=this.value" />
-        <input type="range" name="segmentationThresholdRange" min="0" max="1" step="0.01" value="0.7"
-          oninput="this.form.segmentationThreshold.value=this.value" />
+        <input type="range" id="segmentationThresholdRange" name="segmentationThresholdRange" min="0" max="1"
+          step="0.01" value="0.7" oninput="this.form.segmentationThreshold.value=this.value" />
       </form>
       <form>
         <label for="poseThreshold">Pose Threshold</label>
-        <input type="number" id="poseThreshold" name="poseThreshold" min="0.0" max="1" step="0.01"
-          value="0" oninput="this.form.poseThresholdRange.value=this.value" />
-        <input type="range" name="poseThresholdRange" min="0" max="1" step="0.01" value="0"
+        <input type="number" id="poseThreshold" name="poseThreshold" min="0.0" max="1" step="0.01" value="0"
+          oninput="this.form.poseThresholdRange.value=this.value" />
+        <input type="range" id="poseThresholdRange" name="poseThresholdRange" min="0" max="1" step="0.01" value="0"
           oninput="this.form.poseThreshold.value=this.value" />
       </form>
       <form>
         <label for="poseKeypointThreshold">Pose Keypoint Threshold</label>
         <input type="number" id="poseKeypointThreshold" name="poseKeypointThreshold" min="0.0" max="1" step="0.01"
           value="0.1" oninput="this.form.poseKeypointThresholdRange.value=this.value" />
-        <input type="range" name="poseKeypointThresholdRange" min="0" max="1" step="0.01" value="0.1"
-          oninput="this.form.poseKeypointThreshold.value=this.value" />
+        <input type="range" id="poseKeypointThresholdRange" name="poseKeypointThresholdRange" min="0" max="1"
+          step="0.01" value="0.1" oninput="this.form.poseKeypointThreshold.value=this.value" />
+      </form>
+      <form id="poseModelChoice">
+        <input type="radio" id="bodyPixChoice" name="posemodel" value="bodyPix" checked="checked">
+        <label for="bodyPixChoice">BodyPix</label>
+        <input type="radio" id="poseNetChoice" name="posemodel" value="poseNet">
+        <label for="poseNetChoice">PoseNet</label>
+        <input type="radio" id="noPoseChoice" name="posemodel" value="none">
+        <label for="noPoseChoice">None</label>
       </form>
     </section>
     <section class="actions">
@@ -54,54 +69,119 @@
   </section>
 </body>
 <script type="module">
-  import { loadAndPredict } from './index.js';
+  import { loadSegmentation, loadPose, drawSegmentation, drawPoses, drawPose } from './index.js';
 
   let currentFile = null;
+  let currentPoseModel = "bodyPix";
 
   const reprocessButton = document.getElementById("reprocess");
   reprocessButton.addEventListener("click", (e) => {
     processCurrentFile();
   });
 
-  const enableButton = () => {
+  const enableReprocessButton = () => {
     reprocessButton.innerHTML = "Reprocess";
     reprocessButton.disabled = false;
   };
 
-  const disableButton = () => {
+  const disableReprocessButton = () => {
     reprocessButton.innerHTML = "Processing...";
     reprocessButton.disabled = true;
   };
 
+  const bodyPixChoice = document.getElementById("bodyPixChoice");
+  const poseNetChoice = document.getElementById("poseNetChoice");
+  const noPoseChoice = document.getElementById("noPoseChoice");
+  bodyPixChoice.addEventListener("change", (e) => handlePoseModelChange(bodyPixChoice));
+  poseNetChoice.addEventListener("change", (e) => handlePoseModelChange(poseNetChoice));
+  noPoseChoice.addEventListener("change", (e) => handlePoseModelChange(noPoseChoice));
+
+  const handlePoseModelChange = (radio) => {
+    if (currentPoseModel !== radio.value) {
+      currentPoseModel = radio.value;
+      switch (radio.value) {
+        case "bodyPix":
+          document.getElementById("poseThreshold").disabled = false;
+          document.getElementById("poseThresholdRange").disabled = false;
+          document.getElementById("poseKeypointThreshold").disabled = false;
+          document.getElementById("poseKeypointThresholdRange").disabled = false;
+          document.getElementById("internalPoseResolution").disabled = true;
+          document.getElementById("internalPoseResolutionRange").disabled = true;
+          break;
+        case "poseNet":
+          document.getElementById("poseThreshold").disabled = true;
+          document.getElementById("poseThresholdRange").disabled = true;
+          document.getElementById("poseKeypointThreshold").disabled = false;
+          document.getElementById("poseKeypointThresholdRange").disabled = false;
+          document.getElementById("internalPoseResolution").disabled = false;
+          document.getElementById("internalPoseResolutionRange").disabled = false;
+          break;
+        case "none":
+          document.getElementById("poseThreshold").disabled = true;
+          document.getElementById("poseThresholdRange").disabled = true;
+          document.getElementById("poseKeypointThreshold").disabled = true;
+          document.getElementById("poseKeypointThresholdRange").disabled = true;
+          document.getElementById("internalPoseResolution").disabled = true;
+          document.getElementById("internalPoseResolutionRange").disabled = true;
+          break;
+        default:
+          throw "unsupported pose model choice: " + currentPoseModel;
+      }
+    }
+  };
 
   const canvas = document.getElementById("canvas");
 
+  async function executeModel(imageToProcess) {
+    const imageInput = document.getElementById("imageInput");
+    imageInput.innerHTML = "";
+    imageInput.appendChild(imageToProcess);
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.width = 0;
+    canvas.height = 0;
+    const internalResolutionInput = parseFloat(document.getElementById("internalResolution").value);
+    const internalPoseResolutionInput = parseFloat(document.getElementById("internalPoseResolution").value);
+    const segmentationThresholdInput = parseFloat(document.getElementById("segmentationThreshold").value);
+    const poseThresholdInput = parseFloat(document.getElementById("poseThreshold").value);
+    const poseKeypointThresholdInput = parseFloat(document.getElementById("poseKeypointThreshold").value);
+    switch (currentPoseModel) {
+      case "bodyPix": {
+        const segmentation = await loadSegmentation(imageToProcess, internalResolutionInput, segmentationThresholdInput);
+        console.log(segmentation);
+        drawSegmentation(canvas, imageToProcess, segmentation);
+        drawPoses(ctx, segmentation.allPoses, poseThresholdInput, poseKeypointThresholdInput);
+      }
+        break;
+      case "poseNet": {
+        const segmentation = await loadSegmentation(imageToProcess, internalResolutionInput, segmentationThresholdInput);
+        console.log(segmentation);
+        const pose = await loadPose(imageToProcess, internalPoseResolutionInput);
+        console.log(pose);
+        drawSegmentation(canvas, imageToProcess, segmentation);
+        drawPose(ctx, pose.keypoints, poseKeypointThresholdInput);
+      }
+        break;
+      case "none": {
+        const segmentation = await loadSegmentation(imageToProcess, internalResolutionInput, segmentationThresholdInput);
+        console.log(segmentation);
+        drawSegmentation(canvas, imageToProcess, segmentation);
+      }
+        break;
+      default:
+        throw "unsupported pose model choice: " + currentPoseModel;
+    }
+    URL.revokeObjectURL(imageToProcess.src);
+    enableReprocessButton();
+  };
+
   function processCurrentFile() {
     if (currentFile !== null) {
-      disableButton();
+      disableReprocessButton();
       const imageToProcess = document.createElement("img");
       imageToProcess.src = URL.createObjectURL(currentFile);
-      imageToProcess.onload = function () {
-        const imageInput = document.getElementById("imageInput");
-        imageInput.innerHTML = "";
-        imageInput.appendChild(imageToProcess);
-        const ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        canvas.width = 0;
-        canvas.height = 0;
-        const internalResolutionInput = document.getElementById("internalResolution");
-        const segmentationThresholdInput = document.getElementById("segmentationThreshold");
-        const poseThresholdInput = document.getElementById("poseThreshold");
-        const poseKeypointThresholdInput = document.getElementById("poseKeypointThreshold");
-        loadAndPredict(imageToProcess, canvas, {
-          internalResolution: parseFloat(internalResolutionInput.value),
-          segmentationThreshold: parseFloat(segmentationThresholdInput.value),
-          poseThreshold: parseFloat(poseThresholdInput.value),
-          poseKeypointThreshold: parseFloat(poseKeypointThresholdInput.value)
-        }).then(() => {
-          URL.revokeObjectURL(imageToProcess.src);
-          enableButton();
-        })
+      imageToProcess.onload = (e) => {
+        executeModel(imageToProcess);
       }
     }
   }
