@@ -28,6 +28,10 @@ ul {
     align-items: stretch;
 }
 
+.config .actions button {
+    width: 100px;
+}
+
 .config .parameters {
     align-self: center;
 }

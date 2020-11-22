@@ -28,6 +28,9 @@ export async function loadAndPredict(image, canvas, config) {
     console.log(segmentation);
     for (let i = segmentation.allPoses.length - 1; i >= 0; i--) {
         const pose = segmentation.allPoses[i];
+        if (pose.score < config.poseThreshold) {
+            continue;
+        }
         const color = colors[i % colors.length];
         drawKeypoints(pose.keypoints, config.poseKeypointThreshold, ctx, 1, color);
         drawSkeleton(pose.keypoints, config.poseKeypointThreshold, ctx, 1, color);
