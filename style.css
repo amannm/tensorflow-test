@@ -1,0 +1,32 @@
+body {
+    margin: 0;
+}
+ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.files {
+    text-align: center;
+}
+
+#fileList {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+#fileList > li > img {
+    height: 240px
+}
+
+.outputs {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+}
+
+.outputs > * {
+    width: 50%;
+}
