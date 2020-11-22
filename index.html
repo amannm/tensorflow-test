@@ -9,37 +9,40 @@
 
 <body>
   <section class="config">
-    <form>
-      <label for="internalResolution">Internal Resolution Scale</label>
-      <input type="number" id="internalResolution" name="internalResolution" min="0.25" max="1.0" step="0.25" value="0.5"
-        oninput="this.form.internalResolutionRange.value=this.value" />
-      <input type="range" name="internalResolutionRange" min="0.25" max="1" step="0.25" value="0.5"
-        oninput="this.form.internalResolution.value=this.value" />
-    </form>
-    <form>
-      <label for="segmentationThreshold">Segmentation Threshold</label>
-      <input type="number" id="segmentationThreshold" name="segmentationThreshold" min="0.0" max="1.0" step="0.01"
-        value="0.7" oninput="this.form.segmentationThresholdRange.value=this.value" />
-      <input type="range" name="segmentationThresholdRange" min="0" max="1" step="0.01" value="0.7"
-        oninput="this.form.segmentationThreshold.value=this.value" />
-    </form>
-    <form>
-      <label for="poseKeypointThreshold">Pose Keypoint Threshold</label>
-      <input type="number" id="poseKeypointThreshold" name="poseKeypointThreshold" min="0.0" max="1.0" step="0.01"
-        value="0.1" oninput="this.form.poseKeypointThresholdRange.value=this.value" />
-      <input type="range" name="poseKeypointThresholdRange" min="0" max="1" step="0.01" value="0.1"
-        oninput="this.form.poseKeypointThreshold.value=this.value" />
-    </form>
-    <button id="reprocess">Reprocess</button>
+    <section class="parameters">
+      <form>
+        <label for="internalResolution">Internal Resolution Scale</label>
+        <input type="number" id="internalResolution" name="internalResolution" min="0.25" max="1.0" step="0.25"
+          value="0.5" oninput="this.form.internalResolutionRange.value=this.value" />
+        <input type="range" name="internalResolutionRange" min="0.25" max="1" step="0.25" value="0.5"
+          oninput="this.form.internalResolution.value=this.value" />
+      </form>
+      <form>
+        <label for="segmentationThreshold">Segmentation Threshold</label>
+        <input type="number" id="segmentationThreshold" name="segmentationThreshold" min="0.0" max="1.0" step="0.01"
+          value="0.7" oninput="this.form.segmentationThresholdRange.value=this.value" />
+        <input type="range" name="segmentationThresholdRange" min="0" max="1" step="0.01" value="0.7"
+          oninput="this.form.segmentationThreshold.value=this.value" />
+      </form>
+      <form>
+        <label for="poseKeypointThreshold">Pose Keypoint Threshold</label>
+        <input type="number" id="poseKeypointThreshold" name="poseKeypointThreshold" min="0.0" max="1.0" step="0.01"
+          value="0.1" oninput="this.form.poseKeypointThresholdRange.value=this.value" />
+        <input type="range" name="poseKeypointThresholdRange" min="0" max="1" step="0.01" value="0.1"
+          oninput="this.form.poseKeypointThreshold.value=this.value" />
+      </form>
+    </section>
+    <section class="actions">
+      <button id="reprocess">Reprocess</button>
+      <input type="file" id="fileElem" multiple accept="image/*" style="display:none">
+      <button id="fileSelect">Open...</button>
+    </section>
   </section>
   <section class="outputs">
-    <img id='image' src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
-      crossorigin='anonymous' />
+    <section id="imageInput"></section>
     <canvas id='canvas'></canvas>
   </section>
   <section class="files">
-    <input type="file" id="fileElem" multiple accept="image/*" style="display:none">
-    <a href="#" id="fileSelect">Select some files</a>
     <ul id="fileList"></ul>
   </section>
 </body>
@@ -53,20 +56,42 @@
     processCurrentFile();
   });
 
+  const enableButton = () => {
+    reprocessButton.innerHTML = "Reprocess";
+    reprocessButton.disabled = false;
+  };
+
+  const disableButton = () => {
+    reprocessButton.innerHTML = "Processing...";
+    reprocessButton.disabled = true;
+  };
+
+
+  const canvas = document.getElementById("canvas");
+
   function processCurrentFile() {
     if (currentFile !== null) {
-      const internalResolutionInput = document.getElementById("internalResolution");
-      const segmentationThresholdInput = document.getElementById("segmentationThreshold");
-      const poseKeypointThresholdInput = document.getElementById("poseKeypointThreshold");
-      const imageToProcess = document.getElementById("image");
+      disableButton();
+      const imageToProcess = document.createElement("img");
       imageToProcess.src = URL.createObjectURL(currentFile);
       imageToProcess.onload = function () {
-        loadAndPredict({
+        const imageInput = document.getElementById("imageInput");
+        imageInput.innerHTML = "";
+        imageInput.appendChild(imageToProcess);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = 0;
+        canvas.height = 0;
+        const internalResolutionInput = document.getElementById("internalResolution");
+        const segmentationThresholdInput = document.getElementById("segmentationThreshold");
+        const poseKeypointThresholdInput = document.getElementById("poseKeypointThreshold");
+        loadAndPredict(imageToProcess, canvas, {
           internalResolution: parseFloat(internalResolutionInput.value),
           segmentationThreshold: parseFloat(segmentationThresholdInput.value),
           poseKeypointThreshold: parseFloat(poseKeypointThresholdInput.value)
         }).then(() => {
           URL.revokeObjectURL(imageToProcess.src);
+          enableButton();
         })
       }
     }

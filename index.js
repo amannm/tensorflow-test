@@ -2,9 +2,7 @@ import { drawKeypoints, drawSkeleton } from './util.js';
 
 const colors = ['aqua', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'black', 'white'];
 
-export async function loadAndPredict(config) {
-    const img = document.getElementById('image');
-    const canvas = document.getElementById('canvas');
+export async function loadAndPredict(image, canvas, config) {
     const net = await bodyPix.load({
         architecture: 'ResNet50',
         outputStride: 32,
@@ -23,12 +21,11 @@ export async function loadAndPredict(config) {
     const maskBlurAmount = 0;
 
     bodyPix.drawMask(
-        canvas, img, coloredPartImage, opacity, maskBlurAmount,
+        canvas, image, coloredPartImage, opacity, maskBlurAmount,
         flipHorizontal);
 
-    console.log(segmentation);
-
     const ctx = canvas.getContext('2d');
+    console.log(segmentation);
     for (let i = segmentation.allPoses.length - 1; i >= 0; i--) {
         const pose = segmentation.allPoses[i];
         const color = colors[i % colors.length];
@@ -53,17 +50,15 @@ function mapInternalResolutionConfig(internalResolution) {
     }
 }
 
-export function loadPose(config) {
-    const img = document.getElementById('image');
-    const canvas = document.getElementById('canvas');
+export function loadPose(image, canvas, config) {
     const ctx = canvas.getContext('2d');
     posenet.load({
         architecture: 'ResNet50',
         outputStride: 32,
-        inputResolution: { width: img.width * config.internalResolution, height: img.height * config.internalResolution },
+        inputResolution: { width: image.width * config.internalResolution, height: image.height * config.internalResolution },
         quantBytes: 4
     }).then(function (net) {
-        const pose = net.estimateSinglePose(img, {
+        const pose = net.estimateSinglePose(image, {
             flipHorizontal: false
         });
         return pose;
