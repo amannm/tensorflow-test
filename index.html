@@ -154,11 +154,13 @@
       }
         break;
       case "poseNet": {
-        const segmentation = await loadSegmentation(imageToProcess, internalResolutionInput, segmentationThresholdInput);
+        const segmentationTask = loadSegmentation(imageToProcess, internalResolutionInput, segmentationThresholdInput);
+        const poseTask = loadPose(imageToProcess, internalPoseResolutionInput);
+        const segmentation = await segmentationTask;
         console.log(segmentation);
-        const pose = await loadPose(imageToProcess, internalPoseResolutionInput);
-        console.log(pose);
         drawSegmentation(canvas, imageToProcess, segmentation);
+        const pose = await poseTask;
+        console.log(pose);
         drawPose(ctx, pose.keypoints, poseKeypointThresholdInput);
       }
         break;
@@ -181,6 +183,11 @@
       const imageToProcess = document.createElement("img");
       imageToProcess.src = URL.createObjectURL(currentFile);
       imageToProcess.onload = (e) => {
+        const defaultScalingFactor = Math.sqrt(181503/(imageToProcess.naturalWidth*imageToProcess.naturalHeight));
+        const imageWidth = Math.floor(imageToProcess.naturalWidth * defaultScalingFactor);
+        const imageHeight = Math.floor(imageToProcess.naturalHeight * defaultScalingFactor);
+        imageToProcess.width = imageWidth;
+        imageToProcess.height = imageHeight;
         executeModel(imageToProcess);
       }
     }

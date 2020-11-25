@@ -1,11 +1,11 @@
-import { drawKeypoints, drawSkeleton, getInputSize } from './util.js';
 
-const colors = ['aqua', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'black', 'white'];
+const COLORS = ['aqua', 'red', 'green', 'blue', 'yellow', 'orange', 'purple', 'black', 'white'];
+const LINE_WIDTH = 2;
 
 export async function loadSegmentation(image, internalResolution, segmentationThreshold) {
     const net = await bodyPix.load({
         architecture: 'ResNet50',
-        outputStride: 32,
+        outputStride: 16,
         quantBytes: 4
     });
     return await net.segmentPersonParts(image, {
@@ -31,18 +31,18 @@ function mapInternalResolutionConfig(internalResolution) {
 }
 
 export async function loadPose(image, internalPoseResolution) {
-    const [width, height] = calculateDimensions(image, internalPoseResolution)
-    console.log("pose input image size: " + width + "x" + height)
+    console.log("pose input image size: " + image.width + "x" + image.height)
     const net = await posenet.load({
         architecture: 'ResNet50',
-        outputStride: 32,
-        inputResolution: { width: width, height: height },
+        outputStride: 16,
+        inputResolution: { width: image.width, height: image.height },
         quantBytes: 4
     });
     return await net.estimateSinglePose(image, {
         flipHorizontal: false
     });
 }
+
 export function drawSegmentation(canvas, image, segmentation) {
     const coloredPartImage = bodyPix.toColoredPartMask(segmentation);
     const opacity = 0.8;
@@ -59,27 +59,56 @@ export function drawPoses(ctx, allPoses, poseThreshold, poseKeypointThreshold) {
         if (pose.score < poseThreshold) {
             continue;
         }
-        const color = colors[i % colors.length];
+        const color = COLORS[i % COLORS.length];
         drawPose(ctx, pose.keypoints, poseKeypointThreshold, color);
     }
 }
 
-export function drawPose(ctx, keypoints, poseKeypointThreshold, color = colors[0]) {
+export function drawPose(ctx, keypoints, poseKeypointThreshold, color = COLORS[0]) {
     drawKeypoints(keypoints, poseKeypointThreshold, ctx, 1, color);
     drawSkeleton(keypoints, poseKeypointThreshold, ctx, 1, color);
 }
 
-function calculateDimensions(image, overrideScalingFactor) {
-    const width = image.naturalWidth;
-    const height = image.naturalHeight;
-    if (overrideScalingFactor > 0) {
-        const imageWidth = Math.floor(width * overrideScalingFactor);
-        const imageHeight = Math.floor(height * overrideScalingFactor);
-        return [imageWidth, imageHeight];
-    } else {
-        const defaultScalingFactor = Math.sqrt(345600/(width*height));
-        const imageWidth = Math.floor(width * defaultScalingFactor);
-        const imageHeight = Math.floor(height * defaultScalingFactor);
-        return [imageWidth, imageHeight];
+function drawPoint(ctx, y, x, r, color) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, 2 * Math.PI);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function drawSegment([ay, ax], [by, bx], color, scale, ctx) {
+  ctx.beginPath();
+  ctx.moveTo(ax * scale, ay * scale);
+  ctx.lineTo(bx * scale, by * scale);
+  ctx.lineWidth = LINE_WIDTH;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+}
+
+function drawSkeleton(keypoints, minConfidence, ctx, scale = 1, color = COLOR) {
+  const adjacentKeyPoints =
+    posenet.getAdjacentKeyPoints(keypoints, minConfidence);
+
+  function toTuple({ y, x }) {
+    return [y, x];
+  }
+
+  adjacentKeyPoints.forEach((keypoints) => {
+    drawSegment(
+      toTuple(keypoints[0].position), toTuple(keypoints[1].position), color,
+      scale, ctx);
+  });
+}
+
+function drawKeypoints(keypoints, minConfidence, ctx, scale = 1, color = COLOR) {
+  for (let i = 0; i < keypoints.length; i++) {
+    const keypoint = keypoints[i];
+
+    if (keypoint.score < minConfidence) {
+      continue;
     }
+
+    const { y, x } = keypoint.position;
+    drawPoint(ctx, y * scale, x * scale, 3, color);
+  }
 }
