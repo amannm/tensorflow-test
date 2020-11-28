@@ -3,6 +3,7 @@
 <head>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection"></script>
   <script src="./body-pix-patched.js"></script>
   <link href="./style.css" rel="stylesheet" type="text/css">
 </head>
@@ -12,8 +13,8 @@
     <section class="parameters">
       <form>
         <label for="internalResolution">Internal Resolution Scale</label>
-        <input type="number" id="internalResolution" name="internalResolution" min="0.25" max="1" step="0.25"
-          value="1" oninput="this.form.internalResolutionRange.value=this.value" />
+        <input type="number" id="internalResolution" name="internalResolution" min="0.25" max="1" step="0.25" value="1"
+          oninput="this.form.internalResolutionRange.value=this.value" />
         <input type="range" id="internalResolutionRange" name="internalResolutionRange" min="0.25" max="1" step="0.25"
           value="1" oninput="this.form.internalResolution.value=this.value" />
       </form>
@@ -46,10 +47,12 @@
           step="0.01" value="0.1" oninput="this.form.poseKeypointThreshold.value=this.value" />
       </form>
       <form id="poseModelChoice">
-        <input type="radio" id="bodyPixChoice" name="posemodel" value="bodyPix" checked="checked">
+        <input type="radio" id="bodyPixChoice" name="posemodel" value="bodyPix">
         <label for="bodyPixChoice">BodyPix</label>
         <input type="radio" id="poseNetChoice" name="posemodel" value="poseNet">
         <label for="poseNetChoice">PoseNet</label>
+        <input type="radio" id="faceMeshChoice" name="posemodel" value="faceMesh" checked="checked">
+        <label for="faceMeshChoice">FaceMesh</label>
         <input type="radio" id="noPoseChoice" name="posemodel" value="none">
         <label for="noPoseChoice">None</label>
       </form>
@@ -69,14 +72,18 @@
   </section>
 </body>
 <script type="module">
-  import { loadSegmentation, loadPose, drawSegmentation, drawPoses, drawPose } from './index.js';
+  import { loadSegmentation, loadPose, loadFaceMesh, drawSegmentation, drawPoses, drawPose, drawFaceMask } from './index.js';
 
   let currentFile = null;
-  let currentPoseModel = "bodyPix";
+  let currentPoseModel = "faceMesh";
 
   const reprocessButton = document.getElementById("reprocess");
   reprocessButton.addEventListener("click", (e) => {
-    processCurrentFile();
+    if (currentFile == null) {
+      processDefaultImage();
+    } else {
+      processCurrentFile();
+    }
   });
 
   const enableReprocessButton = () => {
@@ -91,9 +98,11 @@
 
   const bodyPixChoice = document.getElementById("bodyPixChoice");
   const poseNetChoice = document.getElementById("poseNetChoice");
+  const faceMeshChoice = document.getElementById("faceMeshChoice");
   const noPoseChoice = document.getElementById("noPoseChoice");
   bodyPixChoice.addEventListener("change", (e) => handlePoseModelChange(bodyPixChoice));
   poseNetChoice.addEventListener("change", (e) => handlePoseModelChange(poseNetChoice));
+  faceMeshChoice.addEventListener("change", (e) => handlePoseModelChange(faceMeshChoice));
   noPoseChoice.addEventListener("change", (e) => handlePoseModelChange(noPoseChoice));
 
   const handlePoseModelChange = (radio) => {
@@ -115,6 +124,14 @@
           document.getElementById("poseKeypointThresholdRange").disabled = false;
           document.getElementById("internalPoseResolution").disabled = false;
           document.getElementById("internalPoseResolutionRange").disabled = false;
+          break;
+        case "faceMesh":
+          document.getElementById("poseThreshold").disabled = true;
+          document.getElementById("poseThresholdRange").disabled = true;
+          document.getElementById("poseKeypointThreshold").disabled = true;
+          document.getElementById("poseKeypointThresholdRange").disabled = true;
+          document.getElementById("internalPoseResolution").disabled = true;
+          document.getElementById("internalPoseResolutionRange").disabled = true;
           break;
         case "none":
           document.getElementById("poseThreshold").disabled = true;
@@ -164,6 +181,12 @@
         drawPose(ctx, pose.keypoints, poseKeypointThresholdInput);
       }
         break;
+      case "faceMesh": {
+        const predictions = await loadFaceMesh(imageToProcess);
+        console.log(predictions);
+        drawFaceMask(canvas, imageToProcess, predictions);
+      }
+        break;
       case "none": {
         const segmentation = await loadSegmentation(imageToProcess, internalResolutionInput, segmentationThresholdInput);
         console.log(segmentation);
@@ -183,7 +206,7 @@
       const imageToProcess = document.createElement("img");
       imageToProcess.src = URL.createObjectURL(currentFile);
       imageToProcess.onload = (e) => {
-        const defaultScalingFactor = Math.sqrt(181503/(imageToProcess.naturalWidth*imageToProcess.naturalHeight));
+        const defaultScalingFactor = Math.sqrt(181503 / (imageToProcess.naturalWidth * imageToProcess.naturalHeight));
         const imageWidth = Math.floor(imageToProcess.naturalWidth * defaultScalingFactor);
         const imageHeight = Math.floor(imageToProcess.naturalHeight * defaultScalingFactor);
         imageToProcess.width = imageWidth;
@@ -191,6 +214,20 @@
         executeModel(imageToProcess);
       }
     }
+  }
+
+  function processDefaultImage() {
+    // disableReprocessButton();
+    //   const imageToProcess = document.createElement("img");
+    //   imageToProcess.src = './face2.jpg';
+    //   imageToProcess.onload = (e) => {
+    //     const defaultScalingFactor = Math.sqrt(181503 / (imageToProcess.naturalWidth * imageToProcess.naturalHeight));
+    //     const imageWidth = Math.floor(imageToProcess.naturalWidth * defaultScalingFactor);
+    //     const imageHeight = Math.floor(imageToProcess.naturalHeight * defaultScalingFactor);
+    //     imageToProcess.width = imageWidth;
+    //     imageToProcess.height = imageHeight;
+    //     executeModel(imageToProcess);
+    //   }
   }
 
   const fileList = document.getElementById("fileList");
@@ -229,6 +266,9 @@
     }
     e.preventDefault();
   }, false);
+
+
+  processDefaultImage();
 
 </script>
 
